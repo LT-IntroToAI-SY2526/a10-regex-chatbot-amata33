@@ -240,12 +240,12 @@ pa_list: List[Tuple[Pattern, Action]] = [
     ("when was % born".split(), birth_date),
     ("when did % die".split(), death_date),
     ("what is the polar radius of %".split(), polar_radius),
-    (["bye"], bye_action),
     # NEW PATTERNS
     ("what genre is %".split(), album_genre)("who produced %".split(), album_producer),
     ("what label released %".split(), album_label),
-    ("who put out %".split(), album_label)
-    ("which record label released %".split(), album_label)
+    ("who put out %".split(), album_label),
+    ("which record label released %".split(), album_label),
+    (["bye"], bye_action)
 ]
 
 
