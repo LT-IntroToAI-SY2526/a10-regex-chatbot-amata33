@@ -69,10 +69,13 @@ def clean_text(text: str) -> str:
     Returns:
         cleaned text
     """
-    only_ascii = "".join([char if char in string.printable else " " for char in text])
-    no_dup_spaces = re.sub(" +", " ", only_ascii)
-    no_dup_newlines = re.sub("\n+", "\n", no_dup_spaces)
-    return no_dup_newlines
+    def clean_text(text: str) -> str:
+    # 1. Keep newlines but remove other non-printable characters
+    onlyascii = "".join([char if char in string.printable else " " for char in text])
+    # 2. Fix spacing
+    no_dup_spaces = re.sub(" +", " ", onlyascii)
+    # 3. Return the text - keeping single newlines is important for Regex!
+    return no_dup_spaces
 
 
 def get_match(
@@ -170,12 +173,25 @@ def get_album_producer(album_name: str) -> str:
     match = get_match(infobox_text, pattern, "Could not find the producer for this album.")
     return match.group("producer").strip()
 
+#def get_album_label(album_name: str) -> str:
+   # """Extracts the record label of an album."""
+  #  infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
+   # pattern = r"(?:Label)(?:\D*)(?P<label>[A-Z][\w ,&]+)"
+   # match = get_match(infobox_text, pattern, "Could not find the label for this album.")
+   # return match.group("label").strip()
+
 def get_album_label(album_name: str) -> str:
-    """Extracts the record label of an album."""
     infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
-    pattern = r"(?:Label)(?:\D*)(?P<label>[A-Z][\w ,&]+)"
-    match = get_match(infobox_text, pattern, "Could not find the label for this album.")
-    return match.group("label").strip()
+    # This pattern looks for "Label" then skips any non-word junk
+    # and captures everything until it hits a newline
+    pattern = r"Label\s*(?P<label>.+)" 
+    
+    match = re.search(pattern, infobox_text, re.IGNORECASE)
+    if not match:
+        raise AttributeError("Label not found")
+    
+    # Clean up the result to remove leading colons or spaces
+    return match.group("label").strip(": ").split('\n')[0]
 # below are a set of actions. Each takes a list argument and returns a list of answers
 # according to the action and the argument. It is important that each function returns a
 # list of the answer(s) and not just the answer itself.
@@ -241,7 +257,8 @@ pa_list: List[Tuple[Pattern, Action]] = [
     ("when did % die".split(), death_date),
     ("what is the polar radius of %".split(), polar_radius),
     # NEW PATTERNS
-    ("what genre is %".split(), album_genre)("who produced %".split(), album_producer),
+    ("what genre is %".split(), album_genre),
+    ("who produced %".split(), album_producer),
     ("what label released %".split(), album_label),
     ("who put out %".split(), album_label),
     ("which record label released %".split(), album_label),
