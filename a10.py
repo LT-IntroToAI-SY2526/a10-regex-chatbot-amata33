@@ -153,7 +153,29 @@ def get_death_date(name: str) -> str:
 
     return match.group("death")
 
+# Getter functions Music
+def get_album_genre(album_name: str) -> str:
+    """Extracts the musical genre of an album."""
+    infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
+    # Matches "Genre" followed by one or more words/commas
+    pattern = r"(?:Genre)(?:\D*)(?P<genre>[A-Z][\w/ ,&]+)"
+    match = get_match(infobox_text, pattern, "Could not find the genre for this album.")
+    return match.group("genre").strip()
 
+def get_album_producer(album_name: str) -> str:
+    """Extracts the producer(s) of an album."""
+    infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
+    # Matches "Producer" and captures the names following it
+    pattern = r"(?:Producer|Producers)(?:\D*)(?P<producer>[A-Z][\w ,&]+)"
+    match = get_match(infobox_text, pattern, "Could not find the producer for this album.")
+    return match.group("producer").strip()
+
+def get_album_label(album_name: str) -> str:
+    """Extracts the record label of an album."""
+    infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
+    pattern = r"(?:Label)(?:\D*)(?P<label>[A-Z][\w ,&]+)"
+    match = get_match(infobox_text, pattern, "Could not find the label for this album.")
+    return match.group("label").strip()
 # below are a set of actions. Each takes a list argument and returns a list of answers
 # according to the action and the argument. It is important that each function returns a
 # list of the answer(s) and not just the answer itself.
@@ -192,6 +214,15 @@ def polar_radius(matches: List[str]) -> List[str]:
     """
     return [get_polar_radius(matches[0])]
 
+# Action functions
+def album_genre(matches: List[str]) -> List[str]:
+    return [get_album_genre(" ".join(matches))]
+
+def album_producer(matches: List[str]) -> List[str]:
+    return [get_album_producer(" ".join(matches))]
+
+def album_label(matches: List[str]) -> List[str]:
+    return [get_album_label(" ".join(matches))]
 
 # dummy argument is ignored and doesn't matter
 def bye_action(dummy: List[str]) -> None:
@@ -210,6 +241,11 @@ pa_list: List[Tuple[Pattern, Action]] = [
     ("when did % die".split(), death_date),
     ("what is the polar radius of %".split(), polar_radius),
     (["bye"], bye_action),
+    # NEW PATTERNS
+    ("what genre is %".split(), album_genre)("who produced %".split(), album_producer),
+    ("what label released %".split(), album_label),
+    ("who put out %".split(), album_label)
+    ("which record label released %".split(), album_label)
 ]
 
 
@@ -232,6 +268,7 @@ def search_pa_list(src: List[str]) -> List[str]:
             return answer if answer else ["No answers"]
 
     return ["I don't understand"]
+
 
 
 def query_loop() -> None:
