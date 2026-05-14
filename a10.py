@@ -4,6 +4,7 @@ import wikipedia
 from bs4 import BeautifulSoup
 from match import match
 from typing import List, Callable, Tuple, Any, Match
+import unicodedata
 
 
 def get_page_html(title: str) -> str:
@@ -61,21 +62,22 @@ def get_first_infobox_text(html: str) -> str:
 
 
 def clean_text(text: str) -> str:
-    """Cleans given text removing non-ASCII characters and duplicate spaces & newlines
-
-    Args:
-        text - text to clean
-
-    Returns:
-        cleaned text
-    """
-    def clean_text(text: str) -> str:
-    # 1. Keep newlines but remove other non-printable characters
-    onlyascii = "".join([char if char in string.printable else " " for char in text])
-    # 2. Fix spacing
-    no_dup_spaces = re.sub(" +", " ", onlyascii)
-    # 3. Return the text - keeping single newlines is important for Regex!
-    return no_dup_spaces
+    # 1. Normalize unicode (converts fancy dashes/accents to standard ones)
+    text = unicodedata.normalize('NFKD', text)
+    
+    # 2. Filter out non-printable characters BUT keep newlines (\n)
+    # This keeps the 'Label' on its own line so Regex can find it
+    clean_chars = []
+    for char in text:
+        if char in string.printable or char == '\n':
+            clean_chars.append(char)
+    
+    cleaned = "".join(clean_chars)
+    
+    # 3. Collapse multiple spaces but DO NOT collapse newlines yet
+    cleaned = re.sub(r" +", " ", cleaned)
+    
+    return cleaned
 
 
 def get_match(
@@ -160,41 +162,47 @@ def get_death_date(name: str) -> str:
 def get_album_genre(album_name: str) -> str:
     """Extracts the musical genre of an album."""
     infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
-    # Matches "Genre" followed by one or more words/commas
-    pattern = r"(?:Genre)(?:\D*)(?P<genre>[A-Z][\w/ ,&]+)"
+
+    pattern = r"(?:Genre)\n(?P<genre>[A-Za-z-]+)"
     match = get_match(infobox_text, pattern, "Could not find the genre for this album.")
     return match.group("genre").strip()
 
 def get_album_producer(album_name: str) -> str:
-    """Extracts the producer(s) of an album."""
+ 
     infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
-    # Matches "Producer" and captures the names following it
-    pattern = r"(?:Producer|Producers)(?:\D*)(?P<producer>[A-Z][\w ,&]+)"
-    match = get_match(infobox_text, pattern, "Could not find the producer for this album.")
-    return match.group("producer").strip()
+    
+  
+    pattern = r"Producer(?:s)?\s*[:\s]*(?P<producer>.*)"
+    
 
-#def get_album_label(album_name: str) -> str:
-   # """Extracts the record label of an album."""
-  #  infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
-   # pattern = r"(?:Label)(?:\D*)(?P<label>[A-Z][\w ,&]+)"
-   # match = get_match(infobox_text, pattern, "Could not find the label for this album.")
-   # return match.group("label").strip()
+    match = re.search(pattern, infobox_text, re.IGNORECASE | re.MULTILINE)
+    
+    if not match:
+        raise AttributeError("Could not find the producer for this album.")
+    
+  
+    result = match.group("producer").strip()
+    
+
+    if not result or len(result) < 2:
+        return "Multiple producers (see full Wikipedia article)"
+        
+    return result
+
+
 
 def get_album_label(album_name: str) -> str:
     infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
-    # This pattern looks for "Label" then skips any non-word junk
-    # and captures everything until it hits a newline
+
     pattern = r"Label\s*(?P<label>.+)" 
     
     match = re.search(pattern, infobox_text, re.IGNORECASE)
     if not match:
         raise AttributeError("Label not found")
     
-    # Clean up the result to remove leading colons or spaces
+
     return match.group("label").strip(": ").split('\n')[0]
-# below are a set of actions. Each takes a list argument and returns a list of answers
-# according to the action and the argument. It is important that each function returns a
-# list of the answer(s) and not just the answer itself.
+
 
 
 def birth_date(matches: List[str]) -> List[str]:
@@ -256,7 +264,7 @@ pa_list: List[Tuple[Pattern, Action]] = [
     ("when was % born".split(), birth_date),
     ("when did % die".split(), death_date),
     ("what is the polar radius of %".split(), polar_radius),
-    # NEW PATTERNS
+    # album patterns lol
     ("what genre is %".split(), album_genre),
     ("who produced %".split(), album_producer),
     ("what label released %".split(), album_label),
