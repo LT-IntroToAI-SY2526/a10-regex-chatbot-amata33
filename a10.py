@@ -1,11 +1,32 @@
-import re, string, calendar, requests, time
+import re
+import string
+import calendar
+import requests
+import time
+import unicodedata
+from typing import List, Callable, Tuple, Any, Match
+from bs4 import BeautifulSoup
 from wikipedia import WikipediaPage
 import wikipedia
-from bs4 import BeautifulSoup
-from match import match
-from typing import List, Callable, Tuple, Any, Match
-import unicodedata
+import lyricsgenius
+from match import match  # Assumes match.py is in your local directory
 
+# =====================================================================
+# CRITICAL FIX: Replace the placeholder below with your real token!
+# Go to https://genius.com/api-clients to generate one if you haven't.
+# =====================================================================
+
+
+# Put your brand new Client Access Token here
+genius = lyricsgenius.Genius("_6OpzpxlsFfIxCcCOTcP7wZE6kegTVd4SK8_i8Vkyx9EAhAIifdjGYAeRdKhD_rL")
+
+try:
+    # Try a simple fetch to see if it authenticates
+    song = genius.search_song("Thriller", "Michael Jackson")
+    print("Success! Token is valid.")
+    print(song.lyrics[:100]) # Print just the first 100 characters
+except Exception as e:
+    print(f"Token failed. Error: {e}")
 
 def get_page_html(title: str) -> str:
     search_response = requests.get(
@@ -45,14 +66,7 @@ def get_page_html(title: str) -> str:
 
 
 def get_first_infobox_text(html: str) -> str:
-    """Gets first infobox html from a Wikipedia page (summary box)
-
-    Args:
-        html - the full html of the page
-
-    Returns:
-        html of just the first infobox
-    """
+    """Gets first infobox html from a Wikipedia page (summary box)"""
     soup = BeautifulSoup(html, "html.parser")
     results = soup.find_all(class_="infobox")
 
@@ -66,7 +80,6 @@ def clean_text(text: str) -> str:
     text = unicodedata.normalize('NFKD', text)
     
     # 2. Filter out non-printable characters BUT keep newlines (\n)
-    # This keeps the 'Label' on its own line so Regex can find it
     clean_chars = []
     for char in text:
         if char in string.printable or char == '\n':
@@ -85,78 +98,46 @@ def get_match(
     pattern: str,
     error_text: str = "Page doesn't appear to have the property you're expecting",
 ) -> Match:
-    """Finds regex matches for a pattern
-
-    Args:
-        text - text to search within
-        pattern - pattern to attempt to find within text
-        error_text - text to display if pattern fails to match
-
-    Returns:
-        text that matches
-    """
+    """Finds regex matches for a pattern"""
     p = re.compile(pattern, re.DOTALL | re.IGNORECASE)
-    match = p.search(text)
+    match_obj = p.search(text)
 
-    if not match:
+    if not match_obj:
         raise AttributeError(error_text)
-    return match
+    return match_obj
 
 
 def get_polar_radius(planet_name: str) -> str:
-    """Gets the radius of the given planet
-
-    Args:
-        planet_name - name of the planet to get radius of
-
-    Returns:
-        radius of the given planet
-    """
+    """Gets the radius of the given planet"""
     infobox_text = clean_text(get_first_infobox_text(get_page_html(planet_name)))
     pattern = r"(?:Polar radius|Mean radius)(?:[^\d]*)(?P<radius>[\d,.]+)(?:.*?)km"
     error_text = "Page infobox has no polar radius information"
-    match = get_match(infobox_text, pattern, error_text)
+    match_obj = get_match(infobox_text, pattern, error_text)
 
-    return match.group("radius")
+    return match_obj.group("radius")
 
 
 def get_birth_date(name: str) -> str:
-    """Gets birth date of the given person
-
-    Args:
-        name - name of the person
-
-    Returns:
-        birth date of the given person
-    """
+    """Gets birth date of the given person"""
     infobox_text = clean_text(get_first_infobox_text(get_page_html(name)))
     print(infobox_text)
     pattern = r"(?:Born|Date of birth|Born:)(?:\D*)(?P<birth>\d{4}-\d{2}-\d{2})"
-    error_text = (
-        "Page infobox has no birth information (at least none in xxxx-xx-xx format)"
-    )
-    match = get_match(infobox_text, pattern, error_text)
+    error_text = "Page infobox has no birth information (at least none in xxxx-xx-xx format)"
+    match_obj = get_match(infobox_text, pattern, error_text)
 
-    return match.group("birth")
+    return match_obj.group("birth")
+
 
 def get_death_date(name: str) -> str:
-    """Gets death date of the given person
-
-    Args:
-        name - name of the person
-
-    Returns:
-        death date of the given person
-    """
+    """Gets death date of the given person"""
     infobox_text = clean_text(get_first_infobox_text(get_page_html(name)))
     print(infobox_text)
     pattern = r"(?:Died)(?:[\w \d,]*\()(?P<death>\d{4}-\d{2}-\d{2})"
-    error_text = (
-        "Page infobox has no death information (at least none in xxxx-xx-xx format)"
-    )
-    match = get_match(infobox_text, pattern, error_text)
+    error_text = "Page infobox has no death information (at least none in xxxx-xx-xx format)"
+    match_obj = get_match(infobox_text, pattern, error_text)
 
-    return match.group("death")
+    return match_obj.group("death")
+
 
 # Getter functions Music
 def get_album_genre(album_name: str) -> str:
@@ -164,128 +145,115 @@ def get_album_genre(album_name: str) -> str:
     infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
 
     pattern = r"(?:Genre)\n(?P<genre>[A-Za-z-]+)"
-    match = get_match(infobox_text, pattern, "Could not find the genre for this album.")
-    return match.group("genre").strip()
+    match_obj = get_match(infobox_text, pattern, "Could not find the genre for this album.")
+    return match_obj.group("genre").strip()
+
 
 def get_album_producer(album_name: str) -> str:
- 
     infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
-    
-  
     pattern = r"Producer(?:s)?\s*[:\s]*(?P<producer>.*)"
     
-
-    match = re.search(pattern, infobox_text, re.IGNORECASE | re.MULTILINE)
-    
-    if not match:
+    match_obj = re.search(pattern, infobox_text, re.IGNORECASE | re.MULTILINE)
+    if not match_obj:
         raise AttributeError("Could not find the producer for this album.")
     
-  
-    result = match.group("producer").strip()
-    
-
+    result = match_obj.group("producer").strip()
     if not result or len(result) < 2:
         return "Multiple producers (see full Wikipedia article)"
         
     return result
 
 
-
 def get_album_label(album_name: str) -> str:
     infobox_text = clean_text(get_first_infobox_text(get_page_html(album_name)))
-
     pattern = r"Label\s*(?P<label>.+)" 
     
-    match = re.search(pattern, infobox_text, re.IGNORECASE)
-    if not match:
+    match_obj = re.search(pattern, infobox_text, re.IGNORECASE)
+    if not match_obj:
         raise AttributeError("Label not found")
     
-
-    return match.group("label").strip(": ").split('\n')[0]
-
+    return match_obj.group("label").strip(": ").split('\n')[0]
 
 
-def birth_date(matches: List[str]) -> List[str]:
-    """Returns birth date of named person in matches
+# Getter functions Genius
+def get_song_lyrics(song_query: str) -> str:
+    """Fetches a song from Genius and uses Regex to strip out API metadata artifacts."""
+    if GENIUS_TOKEN == "YOUR_REAL_GENIUS_ACCESS_TOKEN_HERE":
+        return "Error: You forgot to replace the placeholder token string with your actual Genius API token!"
 
-    Args:
-        matches - match from pattern of person's name to find birth date of
+    try:
+        song = genius.search_song(song_query)
+        if not song:
+            return f"Could not find the song '{song_query}' on Genius."
+        
+        raw_lyrics = song.lyrics
 
-    Returns:
-        birth date of named person
-    """
-    return [get_birth_date(" ".join(matches))]
+        # --- REGEX CLEANING ---
+        cleaned = re.sub(r"^.*?Lyrics", "", raw_lyrics, flags=re.IGNORECASE)
+        cleaned = re.sub(r"\d*Embed$", "", cleaned)
+        cleaned = re.sub(r"You might also like.*$", "", cleaned, flags=re.IGNORECASE)
 
-def death_date(matches: List[str]) -> List[str]:
-    """Returns death date of named person in matches
+        return cleaned.strip()
 
-    Args:
-        matches - match from pattern of person's name to find death date of
+    except Exception as e:
+        return f"An error occurred while fetching lyrics: {str(e)}"
 
-    Returns:
-        death date of named person
-    """
-    return [get_death_date(" ".join(matches))]
-
-def polar_radius(matches: List[str]) -> List[str]:
-    """Returns polar radius of planet in matches
-
-    Args:
-        matches - match from pattern of planet to find polar radius of
-
-    Returns:
-        polar radius of planet
-    """
-    return [get_polar_radius(matches[0])]
 
 # Action functions
+def birth_date(matches: List[str]) -> List[str]:
+    return [get_birth_date(" ".join(matches))]
+
+
+def death_date(matches: List[str]) -> List[str]:
+    return [get_death_date(" ".join(matches))]
+
+
+def polar_radius(matches: List[str]) -> List[str]:
+    return [get_polar_radius(matches[0])]
+
+
 def album_genre(matches: List[str]) -> List[str]:
     return [get_album_genre(" ".join(matches))]
+
 
 def album_producer(matches: List[str]) -> List[str]:
     return [get_album_producer(" ".join(matches))]
 
+
 def album_label(matches: List[str]) -> List[str]:
     return [get_album_label(" ".join(matches))]
 
-# dummy argument is ignored and doesn't matter
+
+def song_lyrics(matches: List[str]) -> List[str]:
+    return [get_song_lyrics(" ".join(matches))]
+
+
 def bye_action(dummy: List[str]) -> None:
     raise KeyboardInterrupt
 
 
-# type aliases to make pa_list type more readable, could also have written:
-# pa_list: List[Tuple[List[str], Callable[[List[str]], List[Any]]]] = [...]
 Pattern = List[str]
 Action = Callable[[List[str]], List[Any]]
 
-# The pattern-action list for the natural language query system. It must be declared
-# here, after all of the function definitions
 pa_list: List[Tuple[Pattern, Action]] = [
     ("when was % born".split(), birth_date),
     ("when did % die".split(), death_date),
     ("what is the polar radius of %".split(), polar_radius),
-    # album patterns lol
+    # Album patterns
     ("what genre is %".split(), album_genre),
     ("who produced %".split(), album_producer),
     ("what label released %".split(), album_label),
     ("who put out %".split(), album_label),
     ("which record label released %".split(), album_label),
+    # Lyric patterns
+    ("what are the lyrics to %".split(), song_lyrics),
+    ("show me the lyrics for %".split(), song_lyrics),
+    ("sing %".split(), song_lyrics),
     (["bye"], bye_action)
 ]
 
 
 def search_pa_list(src: List[str]) -> List[str]:
-    """Takes source, finds matching pattern and calls corresponding action. If it finds
-    a match but has no answers it returns ["No answers"]. If it finds no match it
-    returns ["I don't understand"].
-
-    Args:
-        source - a phrase represented as a list of words (strings)
-
-    Returns:
-        a list of answers. Will be ["I don't understand"] if it finds no matches and
-        ["No answers"] if it finds a match but no answers
-    """
     for pat, act in pa_list:
         mat = match(pat, src)
         if mat is not None:
@@ -295,11 +263,8 @@ def search_pa_list(src: List[str]) -> List[str]:
     return ["I don't understand"]
 
 
-
 def query_loop() -> None:
-    """The simple query loop. The try/except structure is to catch Ctrl-C or Ctrl-D
-    characters and exit gracefully"""
-    print("Welcome to the wikipedia chatbot!\n")
+    print("Welcome to the chatbot!\n")
     while True:
         try:
             print()
@@ -314,6 +279,5 @@ def query_loop() -> None:
     print("\nSo long!\n")
 
 
-# uncomment the next line once you've implemented everything are ready to try it out
-query_loop()
-#ight we done 
+if __name__ == "__main__":
+    query_loop()
