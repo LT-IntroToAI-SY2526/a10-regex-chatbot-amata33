@@ -20,13 +20,6 @@ from match import match  # Assumes match.py is in your local directory
 # Put your brand new Client Access Token here
 genius = lyricsgenius.Genius("_6OpzpxlsFfIxCcCOTcP7wZE6kegTVd4SK8_i8Vkyx9EAhAIifdjGYAeRdKhD_rL")
 
-try:
-    # Try a simple fetch to see if it authenticates
-    song = genius.search_song("Thriller", "Michael Jackson")
-    print("Success! Token is valid.")
-    print(song.lyrics[:100]) # Print just the first 100 characters
-except Exception as e:
-    print(f"Token failed. Error: {e}")
 
 def get_page_html(title: str) -> str:
     search_response = requests.get(
