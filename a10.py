@@ -361,7 +361,6 @@ pa_list: List[Tuple[Pattern, Action]] = [
     ("which record label released %".split(), album_label),
     # New lyric patterns
     ("what are the lyrics to %".split(), song_lyrics),
-    ("show me the lyrics for %".split(), song_lyrics),
     ("sing %".split(), song_lyrics),
     (["bye"], bye_action)
 ]
