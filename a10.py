@@ -6,7 +6,7 @@ from match import match
 from typing import List, Callable, Tuple, Any, Match
 import unicodedata
 import lyricsgenius
-genius = lyricsgenius.Genius("YOUR_GENIUS_API_TOKEN")
+genius = lyricsgenius.Genius("uFtMzxU9bDsCh46XITZRu2WKBNE_vjf0dYlig4YbIaZ5Mx_OeUiB4PPjxZ_NGUU-")
 
 
 
@@ -20,7 +20,7 @@ def get_page_html(title: str) -> str:
     )
     results = search_response.json().get("query", {}).get("search", [])
     if results:
-        title = results[0]["title"]  # use the top search result title
+        title = results[0]["title"]  
         print(f"Searching Wikipedia for: {title}")
    
     for attempt in range(5):
