@@ -341,7 +341,7 @@ def bye_action(dummy: List[str]) -> None:
 def song_lyrics(matches: List[str]) -> List[str]:
     """Action function that joins the parsed match strings and looks up the lyrics."""
     return [get_song_lyrics(" ".join(matches))]
-# type aliases to make pa_list type more readable, could also have written:
+
 # pa_list: List[Tuple[List[str], Callable[[List[str]], List[Any]]]] = [...]
 Pattern = List[str]
 Action = Callable[[List[str]], List[Any]]
