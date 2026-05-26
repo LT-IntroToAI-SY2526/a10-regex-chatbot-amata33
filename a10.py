@@ -277,6 +277,43 @@ def get_song_lyrics(song_query: str) -> str:
     except Exception as e:
         return f"An error occurred while fetching lyrics: {str(e)}"
 
+def get_album_tracklist(album_query: str) -> str:
+    """Fetches an album from Genius, using Regex to handle artist splits and clean track names."""
+    try:
+        # 1. Regex to check if the user specified an artist using "by [Artist]"
+        # Example: "After Hours by The Weeknd" -> Group 1: "After Hours", Group 2: "The Weeknd"
+        artist_split = re.search(r"^(.*?)\s+by\s+(.*)$", album_query, flags=re.IGNORECASE)
+        
+        if artist_split:
+            album_name = artist_split.group(1).strip()
+            artist_name = artist_split.group(2).strip()
+            # search_album performs much better when artist and album are separated
+            album = genius.search_album(album_name, artist_name)
+        else:
+            album = genius.search_album(album_query)
+            
+        if not album:
+            return f"Could not find the album '{album_query}' on Genius."
+        
+        tracklist_lines = []
+        for track in album.tracks:
+            track_num = track.number
+            track_title = track.song.title
+            
+            # 2. Regex to clean hidden zero-width spaces/unicode artifacts common in Genius data
+            track_title = re.sub(r"[\u200b\u200e\u200f\u00ad]", "", track_title).strip()
+            
+            tracklist_lines.append(f"{track_num}. {track_title}")
+            
+        return f"\n--- {album.name} Tracklist ---\n" + "\n".join(tracklist_lines)
+
+    except Exception as e:
+        return f"An error occurred while fetching the tracklist: {str(e)}"
+
+
+def album_tracklist(matches: List[str]) -> List[str]:
+    """Action function that joins the parsed match strings and looks up the tracklist."""
+    return [get_album_tracklist(" ".join(matches))]
 
 def birth_date(matches: List[str]) -> List[str]:
     """Returns birth date of named person in matches
@@ -362,6 +399,9 @@ pa_list: List[Tuple[Pattern, Action]] = [
     # New lyric patterns
     ("what are the lyrics to %".split(), song_lyrics),
     ("sing %".split(), song_lyrics),
+    ("tracklist for %".split(), album_tracklist),
+    ("what tracks are on %".split(), album_tracklist),
+    ("show tracks for %".split(), album_tracklist),
     (["bye"], bye_action)
 ]
 
