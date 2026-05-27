@@ -280,14 +280,13 @@ def get_song_lyrics(song_query: str) -> str:
 def get_album_tracklist(album_query: str) -> str:
     """Fetches an album from Genius, using Regex to handle artist splits and clean track names."""
     try:
-        # 1. Regex to check if the user specified an artist using "by [Artist]"
-        # Example: "After Hours by The Weeknd" -> Group 1: "After Hours", Group 2: "The Weeknd"
+        
         artist_split = re.search(r"^(.*?)\s+by\s+(.*)$", album_query, flags=re.IGNORECASE)
         
         if artist_split:
             album_name = artist_split.group(1).strip()
             artist_name = artist_split.group(2).strip()
-            # search_album performs much better when artist and album are separated
+            
             album = genius.search_album(album_name, artist_name)
         else:
             album = genius.search_album(album_query)
@@ -300,7 +299,7 @@ def get_album_tracklist(album_query: str) -> str:
             track_num = track.number
             track_title = track.song.title
             
-            # 2. Regex to clean hidden zero-width spaces/unicode artifacts common in Genius data
+            
             track_title = re.sub(r"[\u200b\u200e\u200f\u00ad]", "", track_title).strip()
             
             tracklist_lines.append(f"{track_num}. {track_title}")
