@@ -43,7 +43,7 @@ def get_page_html(title: str) -> str:
         if response.status_code == 200 and response.text.strip():
             data = response.json()
             if "error" not in data:
-                time.sleep(2)  # polite delay after every successful call
+                time.sleep(2)  
                 return data["parse"]["text"]["*"]
     raise ConnectionError(f"Could not retrieve Wikipedia page for '{title}' after 5 attempts")
 
@@ -73,11 +73,10 @@ def get_first_infobox_text(html: str) -> str:
 
 
 def clean_text(text: str) -> str:
-    # 1. Normalize unicode (converts fancy dashes/accents to standard ones)
+    
     text = unicodedata.normalize('NFKD', text)
    
-    # 2. Filter out non-printable characters BUT keep newlines (\n)
-    # This keeps the 'Label' on its own line so Regex can find it
+    
     clean_chars = []
     for char in text:
         if char in string.printable or char == '\n':
@@ -85,7 +84,7 @@ def clean_text(text: str) -> str:
    
     cleaned = "".join(clean_chars)
    
-    # 3. Collapse multiple spaces but DO NOT collapse newlines yet
+    
     cleaned = re.sub(r" +", " ", cleaned)
    
     return cleaned
@@ -248,7 +247,7 @@ def get_album_label(album_name: str) -> str:
 def get_song_lyrics(song_query: str) -> str:
     """Fetches a song from Genius and uses Regex to strip out API metadata artifacts."""
     try:
-        # Search for the song using the query string
+        
         song = genius.search_song(song_query)
         if not song:
             return f"Could not find the song '{song_query}' on Genius."
@@ -256,18 +255,15 @@ def get_song_lyrics(song_query: str) -> str:
         raw_lyrics = song.lyrics
 
 
-        # --- REGEX CLEANING ---
-        # 1. Strip the "Song Title Lyrics" header from the start of the text
-        # Example: "Bohemian Rhapsody Lyrics [Verse 1]" -> " [Verse 1]"
+        
         cleaned = re.sub(r"^.*?Lyrics", "", raw_lyrics, flags=re.IGNORECASE)
 
 
-        # 2. Strip the trailing "Embed" and trailing digits from the very end of the text
-        # Example: "Mama, life had just begun... 42Embed" -> "Mama, life had just begun..."
+        
         cleaned = re.sub(r"\d*Embed$", "", cleaned)
 
 
-        # 3. Strip the "You might also like" text if it shows up at the bottom
+        
         cleaned = re.sub(r"You might also like.*$", "", cleaned, flags=re.IGNORECASE)
 
 
